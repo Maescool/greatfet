@@ -16,38 +16,39 @@ static struct gpio_t swra124_data = GPIO(0, 15);  // J1 P37 - DD 1
 
 void swra124_setup()
 {
-	scu_pinmux(SCU_PINMUX_GPIO0_10, SCU_GPIO_FAST | SCU_CONF_FUNCTION0);
-	scu_pinmux(SCU_PINMUX_GPIO0_11, SCU_GPIO_FAST | SCU_CONF_FUNCTION0);
-	scu_pinmux(SCU_PINMUX_GPIO0_15, SCU_GPIO_FAST | SCU_CONF_FUNCTION0);
+    scu_pinmux(SCU_PINMUX_GPIO0_10, SCU_GPIO_FAST | SCU_CONF_FUNCTION0);
+    scu_pinmux(SCU_PINMUX_GPIO0_11, SCU_GPIO_FAST | SCU_CONF_FUNCTION0);
+    scu_pinmux(SCU_PINMUX_GPIO0_15, SCU_GPIO_FAST | SCU_CONF_FUNCTION0);
 
-	gpio_write(&swra124_reset, 1);
-	gpio_write(&swra124_clock, 0);
-	gpio_write(&swra124_data, 0);
+    gpio_write(&swra124_reset, 1);
+    gpio_write(&swra124_clock, 0);
+    gpio_write(&swra124_data, 0);
 
-	gpio_output(&swra124_reset);
-	gpio_output(&swra124_clock);
-	gpio_input(&swra124_data);
+    gpio_output(&swra124_reset);
+    gpio_output(&swra124_clock);
+    gpio_input(&swra124_data);
     delay_us(1);
 }
 
 void swra124_debug_init()
 {
-	struct {
-		struct gpio_t *gpio;
-		uint8_t value;
-	} steps[] = {
-		{.gpio = &swra124_reset, .value = 0},
-		{.gpio = &swra124_clock, .value = 1},
-		{.gpio = &swra124_clock, .value = 0},
-		{.gpio = &swra124_clock, .value = 1},
-		{.gpio = &swra124_clock, .value = 0},
-		{.gpio = &swra124_reset, .value = 1},
-		{.gpio = NULL},
-	};
-	for (int i = 0; steps[i].gpio; i++) {
-		gpio_write(steps[i].gpio, steps[i].value);
-		delay_us(1);
-	}
+    struct
+    {
+        struct gpio_t *gpio;
+        uint8_t value;
+    } steps[] = {
+            {.gpio = &swra124_reset, .value = 0},
+            {.gpio = &swra124_clock, .value = 1},
+            {.gpio = &swra124_clock, .value = 0},
+            {.gpio = &swra124_clock, .value = 1},
+            {.gpio = &swra124_clock, .value = 0},
+            {.gpio = &swra124_reset, .value = 1},
+            {.gpio = NULL},
+    };
+    for (int i = 0; steps[i].gpio; i++) {
+        gpio_write(steps[i].gpio, steps[i].value);
+        delay_us(1);
+    }
 }
 
 void swra124_debug_stop()
@@ -59,80 +60,82 @@ void swra124_debug_stop()
 
 void swra124_write_byte(const uint8_t v)
 {
-	gpio_output(&swra124_data);
-	for (int i = 0; i < 8; i++) {
-		gpio_write(&swra124_data, (v >> (7 - i)) & 0x01);
-		delay_us(1);
-		gpio_write(&swra124_clock, 1);
-		delay_us(1);
-		gpio_write(&swra124_clock, 0);
-		delay_us(1);
-	}
+    gpio_output(&swra124_data);
+    for (int i = 0; i < 8; i++) {
+        gpio_write(&swra124_data, (v >> (7 - i)) & 0x01);
+        delay_us(1);
+        gpio_write(&swra124_clock, 1);
+        delay_us(1);
+        gpio_write(&swra124_clock, 0);
+        delay_us(1);
+    }
 }
 
 void swra124_write(const uint8_t *data, const size_t size)
 {
-	for (size_t i = 0; i < size; i++) {
-		swra124_write_byte(data[i]);
-	}
+    for (size_t i = 0; i < size; i++) {
+        swra124_write_byte(data[i]);
+    }
 }
 
 uint8_t swra124_read()
 {
-	uint8_t result = 0;
-	gpio_input(&swra124_data);
-	for (int i = 0; i < 8; i++) {
-		gpio_write(&swra124_clock, 1);
-		delay_us(1);
-		result = (result << 1) | gpio_read(&swra124_data);
-		delay_us(1);
-		gpio_write(&swra124_clock, 0);
-		delay_us(1);
-	}
-	return result;
+    uint8_t result = 0;
+    gpio_input(&swra124_data);
+    for (int i = 0; i < 8; i++) {
+        gpio_write(&swra124_clock, 1);
+        delay_us(1);
+        result = (result << 1) | gpio_read(&swra124_data);
+        delay_us(1);
+        gpio_write(&swra124_clock, 0);
+        delay_us(1);
+    }
+    return result;
 }
 
 void swra124_chip_erase()
 {
-	uint8_t command[] = {0x14};
-	swra124_write(command, 1);
-	swra124_read();
+    uint8_t command[] = {SWRA124_CMD_CHIP_ERASE};
+    swra124_write(command, 1);
+    swra124_read();
 }
 
 uint8_t swra124_read_config()
 {
-    uint8_t command[] = {0x24};
+    uint8_t command[] = {SWRA124_CMD_RD_CONFIG};
     swra124_write(command, 1);
+    delay_us(25);
     return swra124_read();
 }
 
 uint8_t swra124_write_config(const uint8_t config)
 {
-	uint8_t command[] = {0x1d, config};
-	swra124_write(command, 1);
+    uint8_t command[] = {SWRA124_CMD_WR_CONFIG, config & 0x2F};
+    swra124_write(command, 2);
     return swra124_read();
 }
 
 uint8_t swra124_read_status()
 {
-	uint8_t command[] = {0x34};
-	swra124_write(command, 1);
-	return swra124_read();
+    uint8_t command[] = {SWRA124_CMD_READ_STATUS};
+    swra124_write(command, 1);
+    return swra124_read();
 }
 
 uint16_t swra124_get_chip_id()
 {
-	uint8_t command[] = {0x68};
-	swra124_write(command, 1);
-	uint8_t chip_id = swra124_read();
-	uint8_t chip_ver = swra124_read();
-	switch(chip_id) {
+    uint8_t command[] = {SWRA124_CMD_GET_CHIP_ID};
+    swra124_write(command, 1);
+    uint8_t chip_id = swra124_read();
+    uint8_t chip_ver = swra124_read();
+    // Setting flash word size based on chip id.
+    switch (chip_id) {
         case 0x01://CC1110
         case 0x11://CC1111
         case 0x81://CC2510
         case 0x91://CC2511
             //debugstr("2 bytes/flash word");
-            flash_word_size=0x02;
+            flash_word_size = 0x02;
             break;
         default:
             //debugstr("Warning: Guessing flash word size.");
@@ -141,46 +144,46 @@ uint16_t swra124_get_chip_id()
         case 0x85://CC2430
         case 0x89://CC2431
             //debugstr("4 bytes/flash word");
-            flash_word_size=0x04;
+            flash_word_size = 0x04;
             break;
-	}
-	return (chip_id << 8) | chip_ver;
+    }
+    return (chip_id << 8) | chip_ver;
 }
 
 void swra124_halt()
 {
-	uint8_t command[] = {0x44};
-	swra124_write(command, 1);
-	swra124_read();
+    uint8_t command[] = {SWRA124_CMD_HALT};
+    swra124_write(command, 1);
+    swra124_read();
 }
 
 void swra124_resume()
 {
-	uint8_t command[] = {0x4c};
-	swra124_write(command, 1);
-	swra124_read();
+    uint8_t command[] = {SWRA124_CMD_RESUME};
+    swra124_write(command, 1);
+    swra124_read();
 }
 
 uint8_t swra124_debug_instr(const uint8_t *instr, const size_t size)
 {
-	uint8_t command[] = {0x54 | (size & 0x03)};
-	swra124_write(command, 1);
-	swra124_write(instr, size);
-	return swra124_read();
+    uint8_t command[] = {SWRA124_CMD_DEBUG_INSTR | (size & 0x03)};
+    swra124_write(command, 1);
+    swra124_write(instr, size);
+    return swra124_read();
 }
 
 void swra124_step_instr()
 {
-	uint8_t command[] = {0x5c};
-	swra124_write(command, 1);
-	swra124_read();
+    uint8_t command[] = {SWRA124_CMD_STEP_INSTR};
+    swra124_write(command, 1);
+    swra124_read();
 }
 
 uint16_t swra124_get_pc()
 {
-	uint8_t command[] = {0x28};
-	swra124_write(command, 1);
-	return (swra124_read() << 8) | swra124_read();
+    uint8_t command[] = {SWRA124_CMD_GET_PC};
+    swra124_write(command, 1);
+    return (swra124_read() << 8) | swra124_read();
 }
 
 void swra124_set_pc(const uint16_t v)
@@ -188,18 +191,41 @@ void swra124_set_pc(const uint16_t v)
     uint8_t command[] = {0x02, ((v >> 8) & 0xff), v & 0xff};
     swra124_debug_instr(command, 3);
 }
+/**
+ * Set Hardware Breakpoint
+ * @param bp Breakpoint number (0-3)
+ * @param active Breakpoint active
+ * @param adr Breakpoint address
+ */
+void swra124_set_hw_breakpoint(const uint8_t bp, const uint8_t active, const uint16_t adr)
+{
+    /**
+     * config
+     * 7:5 unused
+     * 4:3 breakpoint number 0-3
+     * 2 breakpoint 1 enabled; 0 disabled
+     * 1:0 reserved, must be 00
+     */
+    const uint8_t bp_config = ((bp&3) << 3 | (active & 1) << 2);
+    uint8_t command[] = {SWRA124_CMD_SET_HW_BRKPNT,
+                         bp_config & 0x1C, // Datasheet says only use 00011100
+                         (uint8_t)((adr & 0xFF00) >> 8), // bits 15-8 from breakpoint
+                         (uint8_t)(adr & 0x00FF) // bits 0-7 from breakpoint
+    };
+    swra124_write(command, 4);
+}
 
 uint8_t swra124_peek_code_byte(const uint32_t adr)
 {
-    uint8_t bank=adr>>15,
-            lb=adr&0xFF,
-            hb=(adr>>8)&0x7F,
-            toret=0;
+    uint8_t bank = adr >> 15,
+            lb = adr & 0xFF,
+            hb = (adr >> 8) & 0x7F,
+            toret = 0;
     //adr&=0x7FFF;
 
     //MOV MEMCTR, (bank*16)+1
     //cc_debug(3, 0x75, 0xC7, (bank<<4) + 1);
-    uint8_t command1[] = {0x75, 0xC7, (bank<<4) + 1};
+    uint8_t command1[] = {0x75, 0xC7, (bank << 4) + 1};
     swra124_debug_instr(command1, 3);
     //MOV DPTR, address
     //cc_debug(3, 0x90, hb, lb);
@@ -219,7 +245,7 @@ uint8_t swra124_peek_code_byte(const uint32_t adr)
 
 uint8_t swra124_peek_data_byte(const uint16_t adr)
 {
-    uint8_t hb=(adr&0xFF00)>>8, lb=adr&0xFF;
+    uint8_t hb = (adr & 0xFF00) >> 8, lb = adr & 0xFF;
 
     //MOV DPTR, adr
     uint8_t command1[] = {0x90, hb, lb};
@@ -233,7 +259,7 @@ uint8_t swra124_peek_data_byte(const uint16_t adr)
 void swra124_poke_data_byte(const uint16_t adr, const uint8_t val)
 {
 
-    uint8_t hb=(adr & 0xFF00)>>8, lb=adr&0xFF;
+    uint8_t hb = (adr & 0xFF00) >> 8, lb = adr & 0xFF;
 
     //MOV DPTR, adr
     uint8_t command1[] = {0x90, hb, lb};
@@ -242,18 +268,21 @@ void swra124_poke_data_byte(const uint16_t adr, const uint8_t val)
     uint8_t command2[] = {0x74, val};
     swra124_debug_instr(command2, 2);
     //MOVX @DPTR, A
-    uint8_t command3[] = {0xF0};
+    uint8_t command3[] = {0xF0}; // 4-11 cycles
     swra124_debug_instr(command3, 1);
+    delay_us(10); // get some extra cycles
 }
 
-void swra124_write_xdata(const uint16_t adr, const uint8_t *data, const uint16_t len) {
+void swra124_write_xdata(const uint16_t adr, const uint8_t *data, const uint16_t len)
+{
     uint16_t i;
-    for (i=0; i < len; i++) {
-        swra124_poke_data_byte(adr+i, data[i]);
+    for (i = 0; i < len; i++) {
+        swra124_poke_data_byte(adr + i, data[i]);
     }
 }
 
-void swra124_write_flash_buffer(uint8_t *data, uint16_t len){
+void swra124_write_flash_buffer(uint8_t *data, uint16_t len)
+{
     swra124_write_xdata(0xf000, data, len);
 }
 
@@ -316,27 +345,27 @@ void swra124_write_flash_page(const uint32_t adr)
     //Assumes that page has already been written to XDATA 0xF000
     //debugstr("Flashing 2kb at 0xF000 to given adr.");
 
-    if(adr&(MINFLASHPAGE_SIZE-1)){
+    if (adr & (MINFLASHPAGE_SIZE - 1)) {
         //debugstr("Flash page address is not on a page boundary.  Aborting.");
         return;
     }
 
-    if(flash_word_size!=2 && flash_word_size!=4){
+    if (flash_word_size != 2 && flash_word_size != 4) {
         //debugstr("Flash word size is wrong, aborting write to");
         //debughex(adr);
-        while(1);
+        return; // instead of while loop that was here
     }
 
     //Routine comes next
     //WRITE_XDATA_MEMORY(IN: 0xF000 + FLASH_PAGE_SIZE, sizeof(routine), routine);
-    swra124_write_xdata(0xF000+MAXFLASHPAGE_SIZE,
-                   (uint8_t*) flash_routine, sizeof(flash_routine));
+    swra124_write_xdata(0xF000 + MAXFLASHPAGE_SIZE,
+                        (uint8_t *) flash_routine, sizeof(flash_routine));
     //Patch routine's third byte with
     //((address >> 8) / FLASH_WORD_SIZE) & 0x7E
-    swra124_poke_data_byte(0xF000+MAXFLASHPAGE_SIZE+2,
-            ((adr>>8)/flash_word_size)&0x7E);
+    swra124_poke_data_byte(0xF000 + MAXFLASHPAGE_SIZE + 2,
+                           ((adr >> 8) / flash_word_size) & 0x7E);
     //Patch routine to define FLASH_WORD_SIZE
-    if(flash_routine[25]==0xde) {
+    if (flash_routine[25] == 0xde) {
         //Ugly patching code
         swra124_poke_data_byte(0xF000 + MAXFLASHPAGE_SIZE + 25,
                                flash_word_size);
@@ -345,17 +374,17 @@ void swra124_write_flash_page(const uint32_t adr)
 
     //MOV MEMCTR, (bank * 16) + 1;
     uint8_t command[] = {0x75, 0xc7, 0x51};
-    swra124_debug_instr(command,3);
+    swra124_debug_instr(command, 3);
     //cc_debug_instr(3);
     //debugstr("Loaded bank info.");
 
-    swra124_set_pc(0xf000+MAXFLASHPAGE_SIZE);//execute code fragment
+    swra124_set_pc(0xf000 + MAXFLASHPAGE_SIZE);//execute code fragment
     swra124_resume();
 
     //debugstr("Executing.");
 
 
-    while(!(swra124_read_status()&SWRA124_STATUS_CPUHALTED)){
+    while (!(swra124_read_status() & SWRA124_STATUS_CPUHALTED)) {
         led_toggle(LED2);//blink LED while flashing
     }
 

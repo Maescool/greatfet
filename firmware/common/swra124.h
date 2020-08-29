@@ -22,6 +22,20 @@
 #define MAXFLASHPAGE_SIZE 0x800
 #define MINFLASHPAGE_SIZE 0x400
 
+// Debug Command definitions
+// From datasheet Table 45 page 73
+#define SWRA124_CMD_CHIP_ERASE 0x14
+#define SWRA124_CMD_WR_CONFIG 0x1D
+#define SWRA124_CMD_RD_CONFIG 0x24
+#define SWRA124_CMD_GET_PC 0x28
+#define SWRA124_CMD_READ_STATUS 0x34
+#define SWRA124_CMD_SET_HW_BRKPNT 0x3B
+#define SWRA124_CMD_HALT 0x44
+#define SWRA124_CMD_RESUME 0x4C
+#define SWRA124_CMD_DEBUG_INSTR 0x54
+#define SWRA124_CMD_STEP_INSTR 0x5C
+#define SWRA124_CMD_GET_CHIP_ID 0x68
+
 //! Flash Word Size
 extern uint8_t flash_word_size;
 
@@ -39,6 +53,7 @@ uint8_t swra124_debug_instr(const uint8_t *instr, const size_t size);
 void swra124_step_instr();
 uint16_t swra124_get_pc();
 void swra124_set_pc(const uint16_t v);
+void swra124_set_hw_breakpoint(const uint8_t bp, const uint8_t active, const uint16_t adr);
 uint8_t swra124_peek_code_byte(const uint32_t adr);
 uint8_t swra124_peek_data_byte(const uint16_t adr);
 void swra124_poke_data_byte(const uint16_t adr, const uint8_t val);

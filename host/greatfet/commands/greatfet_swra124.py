@@ -24,6 +24,8 @@ def main():
                         help="Show target identification")
     parser.add_argument('-e', '--erase', dest='erase', action='store_true',
                         help="Erase target flash")
+    parser.add_argument('--lock', dest='lock', action='store_true',
+                        help="lock the chip.")
     parser.add_argument('--read-config', dest='readconfig', action='store_true',
                         help="Read Debug config")
     parser.add_argument('--write-config', dest='writeconfig', type=ast.literal_eval,
@@ -73,6 +75,10 @@ def main():
         log_function("Erasing chip")
         chipcon.chip_erase()
 
+    if args.lock:
+        log_function("Locking chip")
+        chipcon.chip_lock()
+
     if args.ident:
         log_function("Getting chip identification:")
         print("chip=%0.4x" % chipcon.get_chip_id())
@@ -109,8 +115,7 @@ def main():
 
     if args.readconfig:
         config = chipcon.read_config()
-        print("%0.4x" % config)
-        print(bin(config))
+        print(config)
 
     chipcon.debug_stop()
 

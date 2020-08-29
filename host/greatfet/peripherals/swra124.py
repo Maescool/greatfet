@@ -42,11 +42,11 @@ class SWRA124(GreatFETPeripheral):
                   0x04: "locked",
                   0x02: "oscstable",
                   0x01: "overflow"}
-    configbits = {0x20: "soft_power_mode",   #new for CC2530
+    configbits = {0x20: "soft_power_mode",  # new for CC2530
                   0x08: "timers_off",
                   0x04: "dma_pause",
                   0x02: "timer_suspend",
-                  0x01: "sel_flash_info_page"}  #stricken from CC2530
+                  0x01: "sel_flash_info_page"}  # stricken from CC2530
 
     def __init__(self, board, log_function):
         """
@@ -77,8 +77,36 @@ class SWRA124(GreatFETPeripheral):
             time.sleep(.1)
         self.log_function("Done erasing chip.")
 
+    def chip_lock(self):
+        # Select flash information page
+        self.write_config(1)
+        if not self.api.read_config() & 1:
+            print("Could not select flash information page, stopping")
+            return
+        # prepare data that needs to be written to flash
+        for i in range(0, 2048):
+            self.poke_data_byte(0xf000+i, 0)
+        # Write page to flash
+        self.write_flash_page(0)
+
+        if self.peek_data_byte(0):
+            print("Failed to clear info flash byte.")
+
+        self.write_config(0)
+        if self.api.read_config() & 1:
+            print("Stuck in info flash mode!")
+
     def read_config(self):
-        return self.api.read_config()
+        config = self.api.read_config()
+        self.log_function("config=%0.2x" % config)
+        self.log_function(bin(config))
+        configstr = ""
+        i = 1
+        while i < 0x100:
+            if config & i:
+                configstr = "%s %s" % (self.configbits[i], configstr)
+            i *= 2
+        return configstr
 
     def write_config(self, config):
         return self.api.write_config(config)
@@ -87,13 +115,13 @@ class SWRA124(GreatFETPeripheral):
         status = self.api.read_status()
         self.log_function("status=%0.2x" % status)
         self.log_function(bin(status))
-        str = ""
-        i=1
+        statusstr = ""
+        i = 1
         while i < 0x100:
             if status & i:
-                str = "%s %s" % (self.statusbits[i], str)
+                statusstr = "%s %s" % (self.statusbits[i], statusstr)
             i *= 2
-        return str
+        return statusstr
 
     def get_chip_id(self):
         return self.api.get_chip_id()
@@ -118,6 +146,18 @@ class SWRA124(GreatFETPeripheral):
     def set_pc(self, val):
         self.log_function("setting program counter to: %04x" % val)
         self.api.set_pc(val)
+
+    def set_hw_breakpoint(self, bp, active, adr):
+        if bp > 3:
+            print("ERROR: bp can't be bigger than 3 (max limit of hardware breakpoints)")
+            return
+        if active > 1 or active < 0:
+            print("ERROR: active can only be 0 or 1")
+            return
+        if adr != adr & 0xFFFF:
+            print("ERROR: address out of range?")
+            return
+        self.api.set_hw_breakpoint(bp, active, adr)
 
     def page_size(self):
         chip = self.get_chip_id() >> 8  # chip_id is type+ver, we only need type, so we shift out ver
@@ -184,8 +224,8 @@ class SWRA124(GreatFETPeripheral):
                     print("%0.4x missing filling 00" % i)
                     missing += 1
                 self.poke_data_byte(addr, data)
-                #self.log_function("i=%0.4x addr=%0.4x data=%0.2x page=%0.4x" % (i, addr, data, page))
-                if i >= page+pagelen-1:
+                # self.log_function("i=%0.4x addr=%0.4x data=%0.2x page=%0.4x" % (i, addr, data, page))
+                if i >= page + pagelen - 1:
                     time.sleep(.1)  # Make sure last poke is processed by chip, wait a bit
                     self.write_flash_page(page)
                     self.log_function("Flashed page at %06x" % page)
@@ -221,7 +261,7 @@ class SWRA124(GreatFETPeripheral):
                     peek = self.peek_code_byte(i)
                 if data != peek:
                     print("ERROR at %04x, found %02x not %02x" % (i, peek, data))
-                #else:
+                # else:
                 #    print("i=%04x peek=%02x data=%02x" % (i, peek, data))
 
                 if i % 0x100 == 0:

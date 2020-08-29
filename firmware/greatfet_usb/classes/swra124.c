@@ -16,14 +16,14 @@
 
 static int swra124_verb_setup()
 {
-	swra124_setup();
-	return 0;
+    swra124_setup();
+    return 0;
 }
 
 static int swra124_verb_debug_init()
 {
-	swra124_debug_init();
-	return 0;
+    swra124_debug_init();
+    return 0;
 }
 
 static int swra124_verb_debug_stop()
@@ -59,53 +59,53 @@ static int swra124_verb_write_config(struct command_transaction *trans)
 
 static int swra124_verb_read_status(struct command_transaction *trans)
 {
-	comms_response_add_uint8_t(trans, swra124_read_status());
-	return 0;
+    comms_response_add_uint8_t(trans, swra124_read_status());
+    return 0;
 }
 
 static int swra124_verb_get_chip_id(struct command_transaction *trans)
 {
-	comms_response_add_uint16_t(trans, swra124_get_chip_id());
-	return 0;
+    comms_response_add_uint16_t(trans, swra124_get_chip_id());
+    return 0;
 }
 
 static int swra124_verb_halt()
 {
-	swra124_halt();
-	return 0;
+    swra124_halt();
+    return 0;
 }
 
 static int swra124_verb_resume()
 {
-	swra124_resume();
-	return 0;
+    swra124_resume();
+    return 0;
 }
 
 static int swra124_verb_debug_instr(struct command_transaction *trans)
 {
-	size_t size = 0;
-	uint8_t instr[SWRA124_MAX_INSTR_SIZE];
-	while (comms_argument_data_remaining(trans) && size < SWRA124_MAX_INSTR_SIZE) {
-		instr[size++] = comms_argument_parse_uint8_t(trans);
-	}
-	if (comms_argument_data_remaining(trans) || size == 0) {
-		pr_error("swra124: invalid instruction");
-		return EINVAL;
-	}
-	comms_response_add_uint8_t(trans, swra124_debug_instr(instr, size));
-	return 0;
+    size_t size = 0;
+    uint8_t instr[SWRA124_MAX_INSTR_SIZE];
+    while (comms_argument_data_remaining(trans) && size < SWRA124_MAX_INSTR_SIZE) {
+        instr[size++] = comms_argument_parse_uint8_t(trans);
+    }
+    if (comms_argument_data_remaining(trans) || size == 0) {
+        pr_error("swra124: invalid instruction");
+        return EINVAL;
+    }
+    comms_response_add_uint8_t(trans, swra124_debug_instr(instr, size));
+    return 0;
 }
 
 static int swra124_verb_step_instr()
 {
-	swra124_step_instr();
-	return 0;
+    swra124_step_instr();
+    return 0;
 }
 
 static int swra124_verb_get_pc(struct command_transaction *trans)
 {
-	comms_response_add_uint16_t(trans, swra124_get_pc());
-	return 0;
+    comms_response_add_uint16_t(trans, swra124_get_pc());
+    return 0;
 }
 
 static int swra124_verb_set_pc(struct command_transaction *trans)
@@ -117,6 +117,21 @@ static int swra124_verb_set_pc(struct command_transaction *trans)
     }
 
     swra124_set_pc(value);
+
+    return 0;
+}
+
+static int swra124_verb_set_hw_breakpoint(struct command_transaction *trans)
+{
+    uint8_t bp = comms_argument_parse_uint8_t(trans);
+    uint8_t active = comms_argument_parse_uint8_t(trans);
+    uint16_t address = comms_argument_parse_uint16_t(trans);
+
+    if (!comms_transaction_okay(trans)) {
+        return EBADMSG;
+    }
+
+    swra124_set_hw_breakpoint(bp, active, address);
 
     return 0;
 }
@@ -179,143 +194,153 @@ static int swra124_verb_write_flash_page(struct command_transaction *trans)
 }
 
 static struct comms_verb swra124_verbs[] =
-{
-	{
-		.name = "setup",
-		.handler = swra124_verb_setup,
-		.in_signature = "",
-		.out_signature = "",
-		.doc = "initialize pin mapping for debugging",
-	},
-	{
-		.name = "debug_init",
-		.handler = swra124_verb_debug_init,
-		.in_signature = "",
-		.out_signature = "",
-		.doc = "reset target into debugging mode",
-	},
-    {
-        .name = "debug_stop",
-        .handler = swra124_verb_debug_stop,
-        .in_signature = "",
-        .out_signature = "",
-        .doc = "reset target out of debugging mode",
-    },
-	{
-		.name = "read_status",
-		.handler = swra124_verb_read_status,
-		.in_signature = "",
-		.out_signature = "B",
-		.out_param_names = "status",
-		.doc = "read status byte from target",
-	},
-	{
-		.name = "get_chip_id",
-		.handler = swra124_verb_get_chip_id,
-		.in_signature = "",
-		.out_signature = "H",
-		.out_param_names = "chip_id",
-		.doc = "read chip ID from target",
-	},
-	{
-		.name = "halt",
-		.handler = swra124_verb_halt,
-		.in_signature = "",
-		.out_signature = "",
-		.doc = "halt target execution",
-	},
-	{
-		.name = "resume",
-		.handler = swra124_verb_resume,
-		.in_signature = "",
-		.out_signature = "",
-		.doc = "resume target execution",
-	},
-	{
-		.name = "debug_instr",
-		.handler = swra124_verb_debug_instr,
-		.in_signature = "<*B",
-		.out_signature = "B",
-		.out_param_names = "a_reg",
-		.doc = "execute instruction on target",
-	},
-	{
-		.name = "step_instr",
-		.handler = swra124_verb_step_instr,
-		.in_signature = "",
-		.out_signature = "",
-		.doc = "single-step target",
-	},
-	{
-		.name = "get_pc",
-		.handler = swra124_verb_get_pc,
-		.in_signature = "",
-		.out_signature = "H",
-		.out_param_names = "pc",
-		.doc = "get program counter from target",
-	},
-    {
-        .name = "set_pc",
-        .handler = swra124_verb_set_pc,
-        .in_signature = "<H",
-        .out_signature = "",
-        .in_param_names = "value",
-        .doc = "set program counter to target",
-    },
-    {
-	    .name = "chip_erase",
-	    .handler = swra124_verb_chip_erase,
-	    .in_signature = "",
-	    .out_signature = "",
-	    .doc = "erase all data on target"
-    },
-    {
-        .name = "read_config",
-        .handler = swra124_verb_read_config,
-        .in_signature = "",
-        .out_signature = "B",
-        .doc = "Read debug config",
-    },
-    {
-        .name = "write_config",
-        .handler = swra124_verb_write_config,
-        .in_signature = "<B",
-        .out_signature = "B",
-        .doc = "Write debug config",
-    },
-    {
-        .name = "peek_code_byte",
-        .handler = swra124_verb_peek_code_byte,
-        .in_signature = "<I",
-        .out_signature = "B",
-        .in_param_names = "address",
-        .doc = "peek code byte on target"
-    },
-    {
-        .name = "peek_data_byte",
-        .handler = swra124_verb_peek_data_byte,
-        .in_signature = "<H",
-        .out_signature = "B",
-        .in_param_names = "address",
-        .doc = "peek data byte on target"
-    },
-    {
-        .name = "poke_data_byte",
-        .handler = swra124_verb_poke_data_byte,
-        .in_signature = "<HB",
-        .out_signature = "",
-        .in_param_names = "address, value",
-        .doc = "poke data byte on target"
-    },
-    {
-        .name = "write_flash_page",
-        .handler = swra124_verb_write_flash_page,
-        .in_signature = "<I",
-        .out_signature = "",
-        .in_param_names = "address",
-        .doc = "write target address page to flash on target"
-    },
-	{},
-};
+        {
+                {
+                        .name = "setup",
+                        .handler = swra124_verb_setup,
+                        .in_signature = "",
+                        .out_signature = "",
+                        .doc = "initialize pin mapping for debugging",
+                },
+                {
+                        .name = "debug_init",
+                        .handler = swra124_verb_debug_init,
+                        .in_signature = "",
+                        .out_signature = "",
+                        .doc = "reset target into debugging mode",
+                },
+                {
+                        .name = "debug_stop",
+                        .handler = swra124_verb_debug_stop,
+                        .in_signature = "",
+                        .out_signature = "",
+                        .doc = "reset target out of debugging mode",
+                },
+                {
+                        .name = "read_status",
+                        .handler = swra124_verb_read_status,
+                        .in_signature = "",
+                        .out_signature = "B",
+                        .out_param_names = "status",
+                        .doc = "read status byte from target",
+                },
+                {
+                        .name = "get_chip_id",
+                        .handler = swra124_verb_get_chip_id,
+                        .in_signature = "",
+                        .out_signature = "H",
+                        .out_param_names = "chip_id",
+                        .doc = "read chip ID from target",
+                },
+                {
+                        .name = "halt",
+                        .handler = swra124_verb_halt,
+                        .in_signature = "",
+                        .out_signature = "",
+                        .doc = "halt target execution",
+                },
+                {
+                        .name = "resume",
+                        .handler = swra124_verb_resume,
+                        .in_signature = "",
+                        .out_signature = "",
+                        .doc = "resume target execution",
+                },
+                {
+                        .name = "debug_instr",
+                        .handler = swra124_verb_debug_instr,
+                        .in_signature = "<*B",
+                        .out_signature = "B",
+                        .out_param_names = "a_reg",
+                        .doc = "execute instruction on target",
+                },
+                {
+                        .name = "step_instr",
+                        .handler = swra124_verb_step_instr,
+                        .in_signature = "",
+                        .out_signature = "",
+                        .doc = "single-step target",
+                },
+                {
+                        .name = "get_pc",
+                        .handler = swra124_verb_get_pc,
+                        .in_signature = "",
+                        .out_signature = "H",
+                        .out_param_names = "pc",
+                        .doc = "get program counter from target",
+                },
+                {
+                        .name = "set_pc",
+                        .handler = swra124_verb_set_pc,
+                        .in_signature = "<H",
+                        .out_signature = "",
+                        .in_param_names = "value",
+                        .doc = "set program counter to target",
+                },
+                {
+                        .name = "set_hw_breakpoint",
+                        .handler = swra124_verb_set_hw_breakpoint,
+                        .in_signature = "<BBH",
+                        .out_signature = "",
+                        .in_param_names = "bp, active, address",
+                        .doc = "set hardware breakpoint to target"
+                },
+                {
+                        .name = "chip_erase",
+                        .handler = swra124_verb_chip_erase,
+                        .in_signature = "",
+                        .out_signature = "",
+                        .doc = "erase all data on target"
+                },
+                {
+                        .name = "read_config",
+                        .handler = swra124_verb_read_config,
+                        .in_signature = "",
+                        .out_signature = "B",
+                        .out_param_names = "status",
+                        .doc = "Read debug config",
+                },
+                {
+                        .name = "write_config",
+                        .handler = swra124_verb_write_config,
+                        .in_signature = "<B",
+                        .out_signature = "B",
+                        .in_param_names = "config",
+                        .doc = "Write debug config",
+                },
+                {
+                        .name = "peek_code_byte",
+                        .handler = swra124_verb_peek_code_byte,
+                        .in_signature = "<I",
+                        .out_signature = "B",
+                        .in_param_names = "address",
+                        .doc = "peek code byte on target"
+                },
+                {
+                        .name = "peek_data_byte",
+                        .handler = swra124_verb_peek_data_byte,
+                        .in_signature = "<H",
+                        .out_signature = "B",
+                        .in_param_names = "address",
+                        .doc = "peek data byte on target"
+                },
+                {
+                        .name = "poke_data_byte",
+                        .handler = swra124_verb_poke_data_byte,
+                        .in_signature = "<HB",
+                        .out_signature = "",
+                        .in_param_names = "address, value",
+                        .doc = "poke data byte on target"
+                },
+                {
+                        .name = "write_flash_page",
+                        .handler = swra124_verb_write_flash_page,
+                        .in_signature = "<I",
+                        .out_signature = "",
+                        .in_param_names = "address",
+                        .doc = "write target address page to flash on target"
+                },
+                {},
+        };
 COMMS_DEFINE_SIMPLE_CLASS(swra124, CLASS_NUMBER_SELF, "swra124", swra124_verbs,
-		"cc1110/cc243x/cc251x debug transport");
+                          "cc1110/cc243x/cc251x debug transport");
